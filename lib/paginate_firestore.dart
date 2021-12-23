@@ -24,6 +24,7 @@ class PaginateFirestore extends StatefulWidget {
     this.gridDelegate =
         const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2),
     this.startAfterDocument,
+    this.startAtDocument,
     this.itemsPerPage = 15,
     this.onError,
     this.onReachedEnd,
@@ -68,6 +69,8 @@ class PaginateFirestore extends StatefulWidget {
   final bool shrinkWrap;
   final bool isLive;
   final DocumentSnapshot? startAfterDocument;
+  // startAtDocument takes precedence over startAfterDocument
+  final DocumentSnapshot? startAtDocument;
   final Widget? header;
   final Widget? footer;
 
@@ -158,6 +161,7 @@ class _PaginateFirestoreState extends State<PaginateFirestore> {
       widget.query,
       widget.itemsPerPage,
       widget.startAfterDocument,
+      widget.startAtDocument,
       isLive: widget.isLive,
     )..fetchPaginatedList();
     super.initState();

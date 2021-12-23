@@ -11,7 +11,8 @@ class PaginationCubit extends Cubit<PaginationState> {
   PaginationCubit(
     this._query,
     this._limit,
-    this._startAfterDocument, {
+    this._startAfterDocument,
+    this._startAtDocument, {
     this.isLive = false,
     this.includeMetadataChanges = false,
     this.options,
@@ -21,6 +22,7 @@ class PaginationCubit extends Cubit<PaginationState> {
   final int _limit;
   final Query _query;
   final DocumentSnapshot? _startAfterDocument;
+  final DocumentSnapshot? _startAtDocument;
   final bool isLive;
   final bool includeMetadataChanges;
   final GetOptions? options;
@@ -133,9 +135,11 @@ class PaginationCubit extends Cubit<PaginationState> {
   Query _getQuery() {
     var localQuery = (_lastDocument != null)
         ? _query.startAfterDocument(_lastDocument!)
-        : _startAfterDocument != null
-            ? _query.startAfterDocument(_startAfterDocument!)
-            : _query;
+        : _startAtDocument != null
+            ? _query.startAtDocument(_startAtDocument!)
+            : _startAfterDocument != null
+                ? _query.startAfterDocument(_startAfterDocument!)
+                : _query;
     localQuery = localQuery.limit(_limit);
     return localQuery;
   }
