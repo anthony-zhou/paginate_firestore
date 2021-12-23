@@ -231,6 +231,7 @@ class _PaginateFirestoreState extends State<PaginateFirestore> {
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final itemIndex = index ~/ 2;
+                print(itemIndex);
                 if (index.isEven) {
                   if (itemIndex >= loadedState.documentSnapshots.length) {
                     _cubit!.fetchPaginatedList();
