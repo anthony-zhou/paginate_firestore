@@ -1,5 +1,9 @@
 # Pagination in Firestore
 
+## This is a forked version taken from the following source:
+
+[https://github.com/vedartm/paginate_firestore](https://github.com/vedartm/paginate_firestore).
+
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 
 [![All Contributors](https://img.shields.io/badge/all_contributors-10-orange.svg?style=flat-square)](#contributors-)
