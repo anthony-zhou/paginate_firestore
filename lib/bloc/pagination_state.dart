@@ -22,20 +22,28 @@ class PaginationError extends PaginationState {
 
 class PaginationLoaded extends PaginationState {
   PaginationLoaded({
-    required this.documentSnapshots,
+    required this.top,
+    required this.bottom,
     required this.hasReachedEnd,
+    required this.hasReachedBeginning,
   });
 
+  final bool hasReachedBeginning;
   final bool hasReachedEnd;
-  final List<DocumentSnapshot> documentSnapshots;
+  final List<QueryDocumentSnapshot> top;
+  final List<QueryDocumentSnapshot> bottom;
 
   PaginationLoaded copyWith({
     bool? hasReachedEnd,
-    List<DocumentSnapshot>? documentSnapshots,
+    bool? hasReachedBeginning,
+    List<QueryDocumentSnapshot>? top,
+    List<QueryDocumentSnapshot>? bottom,
   }) {
     return PaginationLoaded(
       hasReachedEnd: hasReachedEnd ?? this.hasReachedEnd,
-      documentSnapshots: documentSnapshots ?? this.documentSnapshots,
+      hasReachedBeginning: hasReachedEnd ?? this.hasReachedBeginning,
+      top: top ?? this.top,
+      bottom: bottom ?? this.bottom,
     );
   }
 
@@ -45,9 +53,15 @@ class PaginationLoaded extends PaginationState {
 
     return other is PaginationLoaded &&
         other.hasReachedEnd == hasReachedEnd &&
-        listEquals(other.documentSnapshots, documentSnapshots);
+        other.hasReachedBeginning == hasReachedBeginning &&
+        listEquals(other.top, top) &&
+        listEquals(other.bottom, bottom);
   }
 
   @override
-  int get hashCode => hasReachedEnd.hashCode ^ documentSnapshots.hashCode;
+  int get hashCode =>
+      hasReachedEnd.hashCode ^
+      hasReachedBeginning.hashCode ^
+      top.hashCode ^
+      bottom.hashCode;
 }

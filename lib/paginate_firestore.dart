@@ -1,5 +1,8 @@
 library paginate_firestore;
 
+// TODO: find where the current scroll position actually starts (i.e., how much extra space was added at the top) and jump to there
+// TODO: hide the frame where we are jumping to the correct scroll position. (using a callback of some sort).
+
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -25,6 +28,7 @@ class PaginateFirestore extends StatefulWidget {
         const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2),
     this.startAfterDocument,
     this.startAtDocument,
+    this.startAt,
     this.itemsPerPage = 15,
     this.onError,
     this.onReachedEnd,
@@ -71,6 +75,7 @@ class PaginateFirestore extends StatefulWidget {
   final DocumentSnapshot? startAfterDocument;
   // startAtDocument takes precedence over startAfterDocument
   final DocumentSnapshot? startAtDocument;
+  final List<Object>? startAt;
   final Widget? header;
   final Widget? footer;
 
@@ -96,6 +101,11 @@ class PaginateFirestore extends StatefulWidget {
 
 class _PaginateFirestoreState extends State<PaginateFirestore> {
   PaginationCubit? _cubit;
+  double? scrollExtent;
+  double scrollOffset = 70;
+  int currentItemIndex = 0;
+  bool loading = false;
+  int needsJumpToIndex = -1;
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +127,7 @@ class _PaginateFirestoreState extends State<PaginateFirestore> {
             widget.onReachedEnd!(loadedState);
           }
 
-          if (loadedState.documentSnapshots.isEmpty) {
+          if (loadedState.top.isEmpty && loadedState.bottom.isEmpty) {
             return widget.onEmpty;
           }
           return widget.itemBuilderType == PaginateBuilderType.listView
@@ -144,7 +154,9 @@ class _PaginateFirestoreState extends State<PaginateFirestore> {
         if (listener is PaginateRefreshedChangeListener) {
           listener.addListener(() {
             if (listener.refreshed) {
-              _cubit!.refreshPaginatedList();
+              _cubit!.refreshPaginatedList(direction: PaginationDirection.next);
+              _cubit!.refreshPaginatedList(
+                  direction: PaginationDirection.previous);
             }
           });
         } else if (listener is PaginateFilterChangeListener) {
@@ -162,84 +174,147 @@ class _PaginateFirestoreState extends State<PaginateFirestore> {
       widget.itemsPerPage,
       widget.startAfterDocument,
       widget.startAtDocument,
+      widget.startAt,
       isLive: widget.isLive,
     )..fetchPaginatedList();
+
     super.initState();
   }
 
   Widget _buildGridView(PaginationLoaded loadedState) {
-    var gridView = CustomScrollView(
-      reverse: widget.reverse,
-      controller: widget.scrollController,
-      shrinkWrap: widget.shrinkWrap,
-      scrollDirection: widget.scrollDirection,
-      physics: widget.physics,
-      slivers: [
-        if (widget.header != null) widget.header!,
-        SliverPadding(
-          padding: widget.padding,
-          sliver: SliverGrid(
-            gridDelegate: widget.gridDelegate,
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                if (index >= loadedState.documentSnapshots.length) {
-                  _cubit!.fetchPaginatedList();
-                  return widget.bottomLoader;
-                }
-                return widget.itemBuilder(
-                  context,
-                  loadedState.documentSnapshots,
-                  index,
-                );
-              },
-              childCount: loadedState.hasReachedEnd
-                  ? loadedState.documentSnapshots.length
-                  : loadedState.documentSnapshots.length + 1,
-            ),
-          ),
-        ),
-        if (widget.footer != null) widget.footer!,
-      ],
-    );
+    return SizedBox();
+    // var gridView = CustomScrollView(
+    //   reverse: widget.reverse,
+    //   controller: widget.scrollController,
+    //   shrinkWrap: widget.shrinkWrap,
+    //   scrollDirection: widget.scrollDirection,
+    //   physics: widget.physics,
+    //   slivers: [
+    //     if (widget.header != null) widget.header!,
+    //     SliverPadding(
+    //       padding: widget.padding,
+    //       sliver: SliverGrid(
+    //         gridDelegate: widget.gridDelegate,
+    //         delegate: SliverChildBuilderDelegate(
+    //           (context, index) {
+    //             if (index >= loadedState.documentSnapshots.length) {
+    //               _cubit!.fetchPaginatedList();
+    //               return widget.bottomLoader;
+    //             }
+    //             return widget.itemBuilder(
+    //               context,
+    //               loadedState.documentSnapshots,
+    //               index,
+    //             );
+    //           },
+    //           childCount: loadedState.hasReachedEnd
+    //               ? loadedState.documentSnapshots.length
+    //               : loadedState.documentSnapshots.length + 1,
+    //         ),
+    //       ),
+    //     ),
+    //     if (widget.footer != null) widget.footer!,
+    //   ],
+    // );
 
-    if (widget.listeners != null && widget.listeners!.isNotEmpty) {
-      return MultiProvider(
-        providers: widget.listeners!
-            .map((_listener) => ChangeNotifierProvider(
-                  create: (context) => _listener,
-                ))
-            .toList(),
-        child: gridView,
-      );
-    }
+    // if (widget.listeners != null && widget.listeners!.isNotEmpty) {
+    //   return MultiProvider(
+    //     providers: widget.listeners!
+    //         .map((_listener) => ChangeNotifierProvider(
+    //               create: (context) => _listener,
+    //             ))
+    //         .toList(),
+    //     child: gridView,
+    //   );
+    // }
 
-    return gridView;
+    // return gridView;
+  }
+
+  bool _hasStartingCursors() {
+    return widget.startAt != null ||
+        widget.startAtDocument != null ||
+        widget.startAfterDocument != null;
   }
 
   Widget _buildListView(PaginationLoaded loadedState) {
+    const Key centerKey = ValueKey<String>('pagination-sliver-list');
+
     var listView = CustomScrollView(
       reverse: widget.reverse,
       controller: widget.scrollController,
       shrinkWrap: widget.shrinkWrap,
+      center: centerKey,
       scrollDirection: widget.scrollDirection,
       physics: widget.physics,
       slivers: [
-        if (widget.header != null) widget.header!,
+        if (widget.header != null)
+          SliverPadding(
+              padding: EdgeInsets.zero,
+              key: !_hasStartingCursors() ? centerKey : null,
+              sliver: widget.header!),
         SliverPadding(
-          padding: widget.padding,
+          key: !_hasStartingCursors() && widget.header == null
+              ? centerKey
+              : null,
+          padding: EdgeInsets.only(
+              top: widget.padding.top,
+              left: widget.padding.left,
+              right: widget.padding.right),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final itemIndex = index ~/ 2;
-                print(itemIndex);
+
                 if (index.isEven) {
-                  if (itemIndex >= loadedState.documentSnapshots.length) {
+                  if (itemIndex >= loadedState.top.length) {
+                    _cubit!.fetchPaginatedList(
+                        direction: PaginationDirection.previous);
+                    return widget.bottomLoader;
+                  }
+                  return widget.itemBuilder(
+                    context,
+                    loadedState.top,
+                    loadedState.top.length - itemIndex - 1,
+                  );
+                }
+                return widget.separator;
+              },
+              semanticIndexCallback: (widget, localIndex) {
+                if (localIndex.isEven) {
+                  return localIndex ~/ 2;
+                }
+                // ignore: avoid_returning_null
+                return null;
+              },
+              childCount: max(
+                  0,
+                  (loadedState.hasReachedBeginning
+                              ? loadedState.top.length
+                              : loadedState.top.length + 1) *
+                          2 -
+                      1),
+            ),
+          ),
+        ),
+        SliverPadding(
+          key: _hasStartingCursors() ? centerKey : null,
+          padding: EdgeInsets.only(
+              bottom: widget.padding.bottom,
+              left: widget.padding.left,
+              right: widget.padding.right),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final itemIndex = index ~/ 2;
+                if (index.isEven) {
+                  if (itemIndex >= loadedState.bottom.length) {
                     _cubit!.fetchPaginatedList();
                     return widget.bottomLoader;
                   }
                   return widget.itemBuilder(
                     context,
-                    loadedState.documentSnapshots,
+                    loadedState.bottom,
                     itemIndex,
                   );
                 }
@@ -255,8 +330,8 @@ class _PaginateFirestoreState extends State<PaginateFirestore> {
               childCount: max(
                   0,
                   (loadedState.hasReachedEnd
-                              ? loadedState.documentSnapshots.length
-                              : loadedState.documentSnapshots.length + 1) *
+                              ? loadedState.bottom.length
+                              : loadedState.bottom.length + 1) *
                           2 -
                       1),
             ),
@@ -280,31 +355,56 @@ class _PaginateFirestoreState extends State<PaginateFirestore> {
     return listView;
   }
 
+  static const initialPage =
+      232304; // an arbitrary large number to allow for negative scrolling.
+  final PageController _pageController =
+      PageController(initialPage: initialPage);
+
+  // Note that the page view doesn't stop scrolling once you reach the
+  // edges of your data.
   Widget _buildPageView(PaginationLoaded loadedState) {
     var pageView = Padding(
       padding: widget.padding,
       child: PageView.custom(
         reverse: widget.reverse,
         allowImplicitScrolling: widget.allowImplicitScrolling,
-        controller: widget.pageController,
+        controller: widget.pageController ?? _pageController,
         scrollDirection: widget.scrollDirection,
         physics: widget.physics,
         onPageChanged: widget.onPageChanged,
         childrenDelegate: SliverChildBuilderDelegate(
           (context, index) {
-            if (index >= loadedState.documentSnapshots.length) {
-              _cubit!.fetchPaginatedList();
-              return widget.bottomLoader;
+            if (index >= initialPage) {
+              // render from bottom
+              final itemIndex = index - initialPage;
+              if (itemIndex >= loadedState.bottom.length) {
+                _cubit!.fetchPaginatedList();
+                return loadedState.hasReachedEnd ? null : widget.bottomLoader;
+              }
+              return widget.itemBuilder(
+                context,
+                loadedState.bottom,
+                itemIndex,
+              );
+            } else {
+              // render from top
+              final itemIndex = initialPage - index - 1;
+
+              if (itemIndex >= loadedState.top.length) {
+                _cubit!.fetchPaginatedList(
+                    direction: PaginationDirection.previous);
+                return loadedState.hasReachedBeginning
+                    ? null
+                    : widget.bottomLoader;
+              }
+
+              return widget.itemBuilder(
+                context,
+                loadedState.top,
+                loadedState.top.length - itemIndex - 1,
+              );
             }
-            return widget.itemBuilder(
-              context,
-              loadedState.documentSnapshots,
-              index,
-            );
           },
-          childCount: loadedState.hasReachedEnd
-              ? loadedState.documentSnapshots.length
-              : loadedState.documentSnapshots.length + 1,
         ),
       ),
     );
