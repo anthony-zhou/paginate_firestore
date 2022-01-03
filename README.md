@@ -8,7 +8,7 @@ In addition to the base package, this version implements upward pagination with 
 
 What follows is the README of the original `paginate_firestore` package.
 
-Note that this version does not fully implement upwards pagination for `GridView` or `PageView` displays.
+Note that this version does not fully implement `GridView` or `PageView` displays.
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 
