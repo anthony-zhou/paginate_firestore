@@ -4,6 +4,10 @@
 
 [https://github.com/vedartm/paginate_firestore](https://github.com/vedartm/paginate_firestore).
 
+In addition to the base package, this version implements upward pagination with a `startAtDocument` cursor and by maintaining separate `top` and `bottom` lists internally (as described [here](https://api.flutter.dev/flutter/widgets/CustomScrollView-class.html)). This is useful for when you want to click into a specific spot in a list of items and then scroll up and down to view the rest of the list. 
+
+What follows is the README of the original `paginate_firestore` package.
+
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 
 [![All Contributors](https://img.shields.io/badge/all_contributors-10-orange.svg?style=flat-square)](#contributors-)
