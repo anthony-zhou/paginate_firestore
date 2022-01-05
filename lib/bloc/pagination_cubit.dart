@@ -149,6 +149,11 @@ class PaginationCubit extends Cubit<PaginationState> {
     }
   }
 
+  bool _hasNoStartCursors() =>
+      _startAt == null &&
+      _startAfterDocument == null &&
+      _startAtDocument == null;
+
   void _emitPaginatedState(
     List<QueryDocumentSnapshot> newList, {
     required PaginationDirection direction,
@@ -162,7 +167,7 @@ class PaginationCubit extends Cubit<PaginationState> {
         hasReachedEnd: newList.isEmpty,
         hasReachedBeginning: (state is PaginationLoaded)
             ? (state as PaginationLoaded).hasReachedBeginning
-            : false,
+            : _hasNoStartCursors(),
       ));
     } else {
       _firstDocument = newList.isNotEmpty ? newList.first : null;
